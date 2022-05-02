@@ -1,11 +1,7 @@
 from typing import NoReturn
 from ...base import BaseEstimator
-from ..gaussian_estimators import *
 import numpy as np
 from numpy.linalg import det, inv
-from IMLearn.learners import UnivariateGaussian, MultivariateGaussian
-from IMLearn.metrics import *
-
 
 
 class LDA(BaseEstimator):
@@ -50,22 +46,7 @@ class LDA(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        n_samples, n_features = X.shape[0], X.shape[1]
-        self.classes_ = np.unique(y)
-        clas_num = self.classes_.shape[0]
-        self.pi_ = np.zeros(clas_num)
-        self.mu_ = np.zeros((clas_num, n_features))
-        self.cov_ = np.zeros((n_features, n_features))
-        for i, label in enumerate(self.classes_):
-            self.pi_[i] = np.mean(y == label)
-            self.mu_[i] = np.mean(X[y == label], axis=0)
-            self.cov_ += (X[y == label] - self.mu_[i]).T @ (X[y == label] - self.mu_[i])
-
-        # making the cov unbiased
-        self.cov_ /= (n_samples - clas_num)
-        self._cov_inv = np.linalg.inv(self.cov_)
-        self.fitted_ = True
-
+        raise NotImplementedError()
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -81,15 +62,7 @@ class LDA(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        matrix = self.likelihood(X)
-        matrix = matrix * self.pi_
-        location = np.argmax(matrix, axis=1)
-        ret = np.zeros(X.shape[0])
-
-        for i in range(X.shape[0]):
-            ret[i] = self.classes_[location[i]]
-        return ret
-
+        raise NotImplementedError()
 
     def likelihood(self, X: np.ndarray) -> np.ndarray:
         """
@@ -109,22 +82,7 @@ class LDA(BaseEstimator):
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `likelihood` function")
 
-        multiGaus = MultivariateGaussian()
-
-        samp_num = X.shape[0]
-        clas_num = self.classes_.shape[0]
-        ret = np.zeros((samp_num, clas_num))
-        multiGaus.fitted_ = True
-
-        for i, num in enumerate(self.classes_):
-            multiGaus.mu_ = self.mu_[i]
-            multiGaus.cov_ = self.cov_
-
-            ret[:, i] = multiGaus.pdf(X).T
-
-        return ret * self.pi_
-
-
+        raise NotImplementedError()
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -143,4 +101,5 @@ class LDA(BaseEstimator):
         loss : float
             Performance under missclassification loss function
         """
-        return misclassification_error(X, y)
+        from ...metrics import misclassification_error
+        raise NotImplementedError()
