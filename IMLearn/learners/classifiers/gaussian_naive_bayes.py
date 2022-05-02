@@ -1,6 +1,10 @@
 from typing import NoReturn
 from ...base import BaseEstimator
+from ..classifiers import *
 import numpy as np
+from numpy.linalg import det, inv
+from IMLearn.learners.gaussian_estimators import *
+from IMLearn.metrics import *
 
 class GaussianNaiveBayes(BaseEstimator):
     """
@@ -39,7 +43,21 @@ class GaussianNaiveBayes(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        model = LDA()
+        model.fit(X,y)
+        self.mu_ = model.mu_
+        self.pi_ = model.pi_
+        self.classes_ = model.classes_
+        for i, label in enumerate(self.classes_):
+            samp = X[y == label]
+            samp = np.var(samp, axis=0)
+            if self.vars_ is None:
+                self.vars_ = samp
+                continue
+            self.vars_ = np.c_[self.vars_, samp]
+
+        self.vars_ = self.vars_.T
+
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -55,7 +73,14 @@ class GaussianNaiveBayes(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        raise NotImplementedError()
+        matrix = self.likelihood(X)
+        matrix = matrix * self.pi_
+        location = np.argmax(matrix, axis=1)
+        ret = np.zeros(X.shape[0])
+
+        for i in range(X.shape[0]):
+            ret[i] = self.classes_[location[i]]
+        return ret
 
     def likelihood(self, X: np.ndarray) -> np.ndarray:
         """
@@ -75,7 +100,23 @@ class GaussianNaiveBayes(BaseEstimator):
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `likelihood` function")
 
-        raise NotImplementedError()
+        multiGaus = MultivariateGaussian()
+
+        samp_num = X.shape[0]
+        clas_num = self.classes_.shape[0]
+        ret = None
+
+        for i, num in enumerate(self.classes_):
+            multiGaus.mu_ = self.mu_[i]
+            multiGaus.cov_ = np.diag(self.vars_[i])
+            multiGaus.fitted_ = True
+            ll_k = multiGaus.pdf(X)
+            if ret is None:
+                ret = ll_k
+            else:
+                ret = np.c_[ret, ll_k]
+        return ret
+
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -94,4 +135,4 @@ class GaussianNaiveBayes(BaseEstimator):
         loss : float
             Performance under missclassification loss function
         """
-        raise NotImplementedError()
+        return misclassification_error(X, y)
